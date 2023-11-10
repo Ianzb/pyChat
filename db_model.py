@@ -23,3 +23,11 @@ class User(db.Model):
     description = db.Column(db.String(50))
     reg_time = db.Column(db.DateTime)
     last_use_time = db.Column(db.DateTime)
+
+
+class UserSession(db.Model):
+    __tablename__ = "user_session"
+    id = db.Column(db.Integer, primary_key=True)
+    user_session = db.Column(db.String(20), unique=True)
+    exp_time = db.Column(db.DateTime)
+    username = db.Column(db.ForeignKey('user.username'))
