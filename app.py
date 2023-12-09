@@ -1,10 +1,12 @@
+import string
+
 from flask import Flask, render_template, request, jsonify
 from config import BaseConfig
-from strgen import StringGenerator
 from db_model import *
 import hashlib
 from datetime import datetime, timedelta
 import localization as loc
+import secrets
 
 app = Flask(__name__)
 
@@ -15,9 +17,14 @@ with app.app_context():
     db.create_all()
 
 
+def gen_str(length):
+    letters = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(letters) for _ in range(length))
+
+
 class DatabaseManager:
     @staticmethod
-    def verify_app(app_id, sign, *args):.
+    def verify_app(app_id, sign, *args):
         """
         app鉴权
         :param app_id: 调用api的app_id
@@ -48,10 +55,42 @@ class DatabaseManager:
     @staticmethod
     def get_user_by_session(session):
         q = UserSession.query.filter_by(user_session=session)
-        if q.count() == 0 or q.first().exp_time < datetime.now():
-            raise APIError(607)
+        if q.count() == 0:
+            raise APIError(608)
+        elif q.first().exp_time < datetime.now():
+            db.session.delete(q.first())
+            db.session.commit()
+            raise APIError(608)
+        q.first().exp_time = datetime.now() + timedelta(minutes=5)
+        db.session.commit()
+        return DatabaseManager.get_user_info(q.first().username)
 
-        # TODO
+    @staticmethod
+    def send_direct_message(send_user, recv_user, message):
+        message_obj = Message(
+            send_user=send_user.username,
+            recv_user=recv_user.username,
+            message=message,
+            send_time=datetime.now()
+        )
+        DatabaseManager._add_new_line(message_obj)
+
+    @staticmethod
+    def get_direct_message(recv_user):
+        messages = Message.query.filter_by(recv_user=recv_user.username)
+        res = {
+            'status': 0,
+            'count': messages.count(),
+            'messages': []
+        }
+        for m in messages:
+            res['messages'].append({
+                'username': m.send_user,
+                'send_time': m.send_time,
+                'message': m.message
+            })
+            db.session.delete(m)
+        return res
 
     @staticmethod
     def register_app(description=""):
@@ -61,10 +100,10 @@ class DatabaseManager:
         :return: app_id与app_key
         """
         while True:
-            app_id = StringGenerator("[\\l\\d]{10}").render()
+            app_id = gen_str(10)
             if Application.query.filter_by(app_id=app_id).count() == 0:
                 break
-        app_key = StringGenerator("[\\l\\d]{20}").render()
+        app_key = gen_str(20)
         reg_time = datetime.now()  # timestamp
         last_use_time = datetime.now()  # timestamp
         application = Application(
@@ -101,7 +140,7 @@ class DatabaseManager:
             reg_time=reg_time,
             last_use_time=last_use_time)
         DatabaseManager._add_new_line(user)
-        return User
+        return user
 
     @staticmethod
     def login_user(username, password, exp_time_delta=None):
@@ -118,7 +157,7 @@ class DatabaseManager:
         if DatabaseManager.check_user_password(user, password):
             user.last_use_time = datetime.now()
 
-            session = StringGenerator("[\\l\\d]{20}").render()
+            session = gen_str(20)
             exp_time = datetime.now() + exp_time_delta
             user_session = UserSession(
                 user_session=session,
@@ -154,12 +193,24 @@ class DatabaseManager:
         """
         return user.password_hash == DatabaseManager._get_password_hash(password)
 
+    @staticmethod
+    def change_user_password(user, password):
+        if DatabaseManager.check_user_password(user, password):
+            raise APIError(609)
+        user.password_hash = DatabaseManager._get_password_hash(password)
+        db.session.commit()
+
+    @staticmethod
+    def change_user_role(user, role):
+        if role != 0 or 1 or 2:
+            raise APIError(610)
+        user.role = role
+        db.session.commit()
 
     @staticmethod
     def _add_new_line(obj):
         db.session.add(obj)
         db.session.commit()
-
 
 
 class APIError(Exception):
@@ -215,7 +266,12 @@ def register_user():
         salt = request_data.get('salt', '')
 
         DatabaseManager.verify_app(app_id, sign, username, password, description, salt)
-        DatabaseManager.register_user(username, password, description)
+        user = DatabaseManager.register_user(username, password, description)
+        response_data = {
+            'status': 0,
+            'username': user.username,
+            'role': user.role
+        }
     except APIError as e:
         response_data = e.gen_response_data()
     finally:
@@ -244,7 +300,7 @@ def login_user():
 
         DatabaseManager.verify_app(app_id, sign, username, password, salt)
 
-        user_session = DatabaseManager.login_user()
+        user_session = DatabaseManager.login_user(username, password)
         response_data = {
             'status': 0,
             'session': user_session.user_session,
@@ -271,7 +327,7 @@ def change_user_password():
     1,2 admin和super admin可以改变任何人的密码
     :return:
     """
-    response_data = APIError().gen_response_data()
+    response_data = APIError.default_response_data()
     try:
         request_data = request.get_json()
         app_id = request_data.get('app_id', '')
@@ -281,32 +337,19 @@ def change_user_password():
         new_password = request_data.get('new_password', '')
         salt = request_data.get('salt', '')
 
-        verify_app(app_id, sign, session, username, new_password, salt)
+        DatabaseManager.verify_app(app_id, sign, session, username, new_password, salt)
+        current_user = DatabaseManager.get_user_by_session(session)
+        target_user = DatabaseManager.get_user_info(username)
+        if (current_user.id == target_user.id
+                or current_user.role == 2
+                or (current_user.role == 1 and target_user.role == 0)):
+            DatabaseManager.change_user_password(target_user, new_password)
+        else:
+            raise APIError(607)
 
-        q = User.query.filter_by(username=username)
-        if q.count() == 0:
-            raise APIError(606)
-
-
-        if
-
-        q.first().last_use_time = datetime.now()
-
-        session = StringGenerator("[\\l\\d]{20}").render()
-        exp_time = datetime.now() + timedelta(minutes=5)
-
-        user_session = UserSession(
-            user_session=session,
-            exp_time=exp_time,
-            user_id=q.first().id
-        )
-        db.session.add(user_session)
-
-        db.session.commit()
         response_data = {
             'status': 0,
-            'session': session,
-            'exp_time': exp_time
+            'username': username,
         }
     except APIError as e:
         response_data = e.gen_response_data()
@@ -314,14 +357,101 @@ def change_user_password():
         return jsonify(response_data)
 
 
+@app.route('/api/v1/get_user_info', methods=['POST'])
+def get_user_info():
+    response_data = APIError.default_response_data()
+    try:
+        request_data = request.get_json()
+        app_id = request_data.get('app_id', '')
+        sign = request_data.get('sign', '')
+        session = request_data.get('session', '')
+        username = request_data.get('username', '')
+        salt = request_data.get('salt', '')
+        DatabaseManager.verify_app(app_id, sign, session, username, salt)
+        DatabaseManager.get_user_by_session(session)
+        user = DatabaseManager.get_user_info(username)
+        response_data = {
+            'status': 0,
+            'username': user.username,
+            'role': user.role,
+            'description': user.description,
+            'reg_time': user.reg_time,
+            'last_use_time': user.last_use_time
+        }
+    except APIError as e:
+        response_data = e.gen_response_data()
+    finally:
+        return jsonify(response_data)
+
 @app.route('/api/v1/heartbeat', methods=['POST'])
 def heartbeat():
-    request_data = request.get_json()
-    timestamp = request_data.get('timestamp')
-    app_id = request_data.get('app_id')
-    token = request_data.get('token')
-    response_data = {'timestamp': datetime.now(), 'status': 0}
-    return jsonify(response_data)
+    response_data = APIError.default_response_data()
+    try:
+        request_data = request.get_json()
+        app_id = request_data.get('app_id', '')
+        sign = request_data.get('sign', '')
+        session = request_data.get('session', '')
+        salt = request_data.get('salt', '')
+        DatabaseManager.verify_app(app_id, sign, session, salt)
+        user = DatabaseManager.get_user_by_session(session)
+
+        response_data = {
+            'status': 0,
+            'username': user.username,
+            'current_time': datetime.now()
+        }
+        return jsonify(response_data)
+    except APIError as e:
+        response_data = e.gen_response_data()
+    finally:
+        return jsonify(response_data)
+
+
+@app.route('/api/v1/send_direct_message', methods=['POST'])
+def send_direct_message():
+    response_data = APIError.default_response_data()
+    try:
+        request_data = request.get_json()
+        app_id = request_data.get('app_id', '')
+        sign = request_data.get('sign', '')
+        session = request_data.get('session', '')
+        recv_username = request_data.get('recv_user', '')
+        message = request_data.get('message', '')
+        salt = request_data.get('salt', '')
+        DatabaseManager.verify_app(app_id, sign, session, recv_username, message, salt)
+        send_user = DatabaseManager.get_user_by_session(session)
+        recv_user = DatabaseManager.get_user_info(recv_username)
+
+        DatabaseManager.send_direct_message(send_user, recv_user, message)
+
+        response_data = {
+            'status': 0,
+            'send_user': send_user.username,
+            'recv_user': recv_user.username,
+            'send_time': datetime.now()
+        }
+    except APIError as e:
+        response_data = e.gen_response_data()
+    finally:
+        return jsonify(response_data)
+
+
+@app.route('/api/v1/get_direct_message', methods=['POST'])
+def get_direct_message():
+    response_data = APIError.default_response_data()
+    try:
+        request_data = request.get_json()
+        app_id = request_data.get('app_id', '')
+        sign = request_data.get('sign', '')
+        session = request_data.get('session', '')
+        salt = request_data.get('salt', '')
+        DatabaseManager.verify_app(app_id, sign, session, salt)
+        recv_user = DatabaseManager.get_user_by_session(session)
+        response_data = DatabaseManager.get_direct_message(recv_user)
+    except APIError as e:
+        response_data = e.gen_response_data()
+    finally:
+        return jsonify(response_data)
 
 
 if __name__ == '__main__':

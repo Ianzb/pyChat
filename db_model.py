@@ -31,3 +31,12 @@ class UserSession(db.Model):
     user_session = db.Column(db.String(20), unique=True)
     exp_time = db.Column(db.DateTime)
     username = db.Column(db.ForeignKey('user.username'))
+
+
+class Message(db.Model):
+    __tablename__ = "message"
+    id = db.Column(db.Integer, primary_key=True)
+    send_user = db.Column(db.ForeignKey('user.username'))
+    recv_user = db.Column(db.ForeignKey('user.username'))
+    message = db.Column(db.String(200))
+    send_time = db.Column(db.DateTime)
