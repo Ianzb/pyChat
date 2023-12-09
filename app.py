@@ -1,4 +1,5 @@
 import string
+import threading
 
 from flask import Flask, render_template, request, jsonify
 from config import BaseConfig
@@ -66,6 +67,14 @@ class DatabaseManager:
         return DatabaseManager.get_user_info(q.first().username)
 
     @staticmethod
+    def clean_sessions():
+        q = db.session.query(UserSession)
+        for i in q:
+            if i.exp_time < datetime.now():
+                db.session.delete(i)
+        db.session.commit()
+
+    @staticmethod
     def send_direct_message(send_user, recv_user, message):
         message_obj = Message(
             send_user=send_user.username,
@@ -90,6 +99,54 @@ class DatabaseManager:
                 'message': m.message
             })
             db.session.delete(m)
+        return res
+
+    @staticmethod
+    def register_group(group_name, description=""):
+        reg_time = datetime.now()  # timestamp
+        last_use_time = datetime.now()  # timestamp
+        group = Group(
+            name=group_name,
+            description=description,
+            reg_time=reg_time,
+            last_use_time=last_use_time)
+        db.session.add(group)
+        db.session.commit()
+        return group
+
+    @staticmethod
+    def get_group_by_id(gid):
+        q = Group.query.filter_by(id=int(gid))
+        if q.count() == 0:
+            raise APIError(611)
+        q.first().last_use_time = datetime.now()
+        db.session.commit()
+        return q.first()
+
+    @staticmethod
+    def send_group_message(send_user, group, message):
+        message_obj = GroupMessage(
+            send_user=send_user.username,
+            gid=group.id,
+            message=message,
+            send_time=datetime.now()
+        )
+        DatabaseManager._add_new_line(message_obj)
+
+    @staticmethod
+    def get_group_message(group):
+        messages = GroupMessage.query.filter_by(gid=group.id)
+        res = {
+            'status': 0,
+            'count': messages.count(),
+            'messages': []
+        }
+        for m in messages:
+            res['messages'].append({
+                'username': m.send_user,
+                'send_time': m.send_time,
+                'message': m.message
+            })
         return res
 
     @staticmethod
@@ -452,6 +509,113 @@ def get_direct_message():
         response_data = e.gen_response_data()
     finally:
         return jsonify(response_data)
+
+
+@app.route('/api/v1/register_group', methods=['POST'])
+def register_group():
+    response_data = APIError.default_response_data()
+    try:
+        request_data = request.get_json()
+        app_id = request_data.get('app_id', '')
+        sign = request_data.get('sign', '')
+        session = request_data.get('session', '')
+        group_name = request_data.get('group_name', '')
+        description = request_data.get('description', '')
+        salt = request_data.get('salt', '')
+        DatabaseManager.verify_app(app_id, sign, session, group_name, description, salt)
+        DatabaseManager.get_user_by_session(session)
+        group = DatabaseManager.register_group(group_name, description)
+        response_data = {
+            'status': 0,
+            'gid': group.id,
+            'register_time': datetime.now()
+        }
+    except Exception as e:
+        print(e)
+    finally:
+        return jsonify(response_data)
+
+
+@app.route('/api/v1/send_group_message', methods=['POST'])
+def send_group_message():
+    response_data = APIError.default_response_data()
+    try:
+        request_data = request.get_json()
+        app_id = request_data.get('app_id', '')
+        sign = request_data.get('sign', '')
+        session = request_data.get('session', '')
+        gid = request_data.get('gid', '')
+        message = request_data.get('message', '')
+        salt = request_data.get('salt', '')
+        DatabaseManager.verify_app(app_id, sign, session, gid, message, salt)
+        send_user = DatabaseManager.get_user_by_session(session)
+        group = DatabaseManager.get_group_by_id(gid)
+
+        DatabaseManager.send_group_message(send_user, group, message)
+
+        response_data = {
+            'status': 0,
+            'send_user': send_user.username,
+            'group': group.name,
+            'send_time': datetime.now()
+        }
+    except APIError as e:
+        response_data = e.gen_response_data()
+    finally:
+        return jsonify(response_data)
+
+
+@app.route('/api/v1/get_group_message', methods=['POST'])
+def get_group_message():
+    response_data = APIError.default_response_data()
+    try:
+        request_data = request.get_json()
+        app_id = request_data.get('app_id', '')
+        sign = request_data.get('sign', '')
+        session = request_data.get('session', '')
+        gid = request_data.get('gid', '')
+        salt = request_data.get('salt', '')
+        DatabaseManager.verify_app(app_id, sign, session, gid, salt)
+
+        recv_user = DatabaseManager.get_user_by_session(session)
+        group = DatabaseManager.get_group_by_id(gid)
+        response_data = DatabaseManager.get_group_message(group)
+    except APIError as e:
+        response_data = e.gen_response_data()
+    finally:
+        return jsonify(response_data)
+
+
+@app.route('/api/v1/get_group_info', methods=['POST'])
+def get_group_info():
+    response_data = APIError.default_response_data()
+    try:
+        request_data = request.get_json()
+        app_id = request_data.get('app_id', '')
+        sign = request_data.get('sign', '')
+        session = request_data.get('session', '')
+        gid = request_data.get('gid', '')
+        salt = request_data.get('salt', '')
+        DatabaseManager.verify_app(app_id, sign, session, gid, salt)
+
+        group = DatabaseManager.get_group_by_id(gid)
+        response_data = {
+            'status': 0,
+            'gid': group.id,
+            'name': group.name,
+            'description': group.description,
+            'reg_time': group.reg_time,
+            'last_use_time': group.last_use_time
+        }
+    except APIError as e:
+        response_data = e.gen_response_data()
+    finally:
+        return jsonify(response_data)
+
+
+@app.before_request
+def clean_sessions():
+    DatabaseManager.clean_sessions()
 
 
 if __name__ == '__main__':

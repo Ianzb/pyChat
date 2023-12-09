@@ -33,10 +33,27 @@ class UserSession(db.Model):
     username = db.Column(db.ForeignKey('user.username'))
 
 
+class Group(db.Model):
+    __tablename__ = "group"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(20), unique=True)
+    description = db.Column(db.String(50))
+    reg_time = db.Column(db.DateTime)
+    last_use_time = db.Column(db.DateTime)
+
 class Message(db.Model):
     __tablename__ = "message"
     id = db.Column(db.Integer, primary_key=True)
     send_user = db.Column(db.ForeignKey('user.username'))
     recv_user = db.Column(db.ForeignKey('user.username'))
+    message = db.Column(db.String(200))
+    send_time = db.Column(db.DateTime)
+
+
+class GroupMessage(db.Model):
+    __tablename__ = "group_message"
+    id = db.Column(db.Integer, primary_key=True)
+    send_user = db.Column(db.ForeignKey('user.username'))
+    gid = db.Column(db.ForeignKey('group.id'))
     message = db.Column(db.String(200))
     send_time = db.Column(db.DateTime)
