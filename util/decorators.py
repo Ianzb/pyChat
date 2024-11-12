@@ -2,7 +2,7 @@ import functools
 
 from flask import jsonify
 
-from exception import APIError
+from util.exception import APIError
 
 
 def auto_handle_exception_and_jsonify(func):

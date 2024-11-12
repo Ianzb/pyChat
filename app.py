@@ -1,10 +1,9 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request
 from config import BaseConfig
 from database.database import DatabaseManager
-from db_model import *
+from database.db_model import *
 from datetime import datetime
 
-from exception import APIError
 from util.decorators import *
 
 app = Flask(__name__)
