@@ -7,7 +7,7 @@ from api_demos.constants import BASE_URL
 
 url = BASE_URL + '/api/v1/register_app'
 
-description= 'Test test test...'
+description = 'Test test test...'
 
 data = {
     'description': description,
