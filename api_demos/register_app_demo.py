@@ -3,7 +3,9 @@ import urllib.request
 import json
 import hashlib
 
-url = 'http://124.221.74.246:82/api/v1/register_app'
+from api_demos.constants import BASE_URL
+
+url = BASE_URL + '/api/v1/register_app'
 
 description= 'Test test test...'
 

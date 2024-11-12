@@ -3,7 +3,9 @@ import urllib.request
 import json
 import hashlib
 
-url = 'http://127.0.0.1:5000/api/v1/register_user'
+from api_demos.constants import BASE_URL
+
+url = BASE_URL + '/api/v1/register_user'
 
 app_id = 'MZFiLAzmJu'
 app_key = 'vUCiKf167oNUfpdbsxKs'
