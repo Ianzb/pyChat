@@ -3,7 +3,9 @@ import urllib.request
 import json
 import hashlib
 
-url = 'http://127.0.0.1:5000/api/v1/send_group_message'
+from api_demos.constants import BASE_URL
+
+url = BASE_URL + '/api/v1/send_group_message'
 
 app_id = 'MZFiLAzmJu'
 app_key = 'vUCiKf167oNUfpdbsxKs'
