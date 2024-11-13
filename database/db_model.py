@@ -43,6 +43,15 @@ class Group(db.Model):
     last_use_time = db.Column(db.DateTime)
 
 
+class GroupUser(db.Model):
+    __tablename__ = "group_user"
+    id = db.Column(db.Integer, primary_key=True)
+    gid = db.Column(db.ForeignKey('group.id'))
+    username = db.Column(db.ForeignKey('user.username'))
+    role = db.Column(db.Integer)  # 0: normal  1: admin  2: owner
+    mute_until = db.Column(db.DateTime)
+
+
 class Message(db.Model):
     __tablename__ = "message"
     id = db.Column(db.Integer, primary_key=True)
