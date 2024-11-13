@@ -2,8 +2,8 @@ import hashlib
 from datetime import datetime, timedelta
 
 from util.util import gen_str
-from exception import APIError
-from db_model import Application, db, UserSession, Message, Group, GroupMessage, User
+from util.exception import APIError
+from database.db_model import Application, db, UserSession, Message, Group, GroupMessage, User
 
 
 class DatabaseManager:

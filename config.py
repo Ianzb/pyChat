@@ -1,3 +1,5 @@
+import os
+
 # MySQL数据库配置
 class BaseConfig:
     DIALECT = 'mysql'
@@ -5,7 +7,7 @@ class BaseConfig:
     HOST = '127.0.0.1'
     PORT = '3306'
     USERNAME = 'root'
-    PASSWORD = 'root'
+    PASSWORD = os.environ.get("PYCHAT_DATABASE_PASSWORD")
     DATABASE = 'pychat'
 
     # mysql不识别utf-8，需要直接写成utf8
