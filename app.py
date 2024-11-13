@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.config.from_object(BaseConfig)
 with app.app_context():
     db.init_app(app)
-    # db.drop_all()
+    db.drop_all()
     db.create_all()
 
 
@@ -193,9 +193,24 @@ def get_direct_message():
     sign = request_data.get('sign', '')
     session = request_data.get('session', '')
     salt = request_data.get('salt', '')
+
     DatabaseManager.verify_app(app_id, sign, session, salt)
     recv_user = DatabaseManager.get_user_by_session(session)
     return DatabaseManager.get_direct_message(recv_user)
+
+
+@app.route('/api/v1/get_direct_message/all_cache', methods=['POST'])
+@auto_handle_exception_and_jsonify
+def get_direct_message_all_cache():
+    request_data = request.get_json()
+    app_id = request_data.get('app_id', '')
+    sign = request_data.get('sign', '')
+    session = request_data.get('session', '')
+    salt = request_data.get('salt', '')
+
+    DatabaseManager.verify_app(app_id, sign, session, salt)
+    recv_user = DatabaseManager.get_user_by_session(session)
+    return DatabaseManager.get_direct_message(recv_user, skip_delivered=False)
 
 
 @app.route('/api/v1/register_group', methods=['POST'])

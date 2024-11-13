@@ -63,12 +63,13 @@ class DatabaseManager:
             send_user=send_user.username,
             recv_user=recv_user.username,
             message=message,
-            send_time=datetime.now()
+            send_time=datetime.now(),
+            delivered=False
         )
         DatabaseManager._add_new_line(message_obj)
 
     @staticmethod
-    def get_direct_message(recv_user):
+    def get_direct_message(recv_user, skip_delivered=True, auto_mark_delivered=True):
         messages = Message.query.filter_by(recv_user=recv_user.username)
         res = {
             'status': 0,
@@ -76,13 +77,22 @@ class DatabaseManager:
             'messages': []
         }
         for m in messages:
+            if skip_delivered and m.delivered:
+                continue
             res['messages'].append({
                 'username': m.send_user,
                 'send_time': m.send_time,
                 'message': m.message
             })
-            db.session.delete(m)
+            if auto_mark_delivered:
+                DatabaseManager._mark_direct_message_received(m)
+            # db.session.delete(m)
         return res
+
+    @staticmethod
+    def _mark_direct_message_received(m):
+        m.delivered = True
+        db.session.commit()
 
     @staticmethod
     def register_group(group_name, description=""):
