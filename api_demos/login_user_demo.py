@@ -9,7 +9,7 @@ url = BASE_URL + '/api/v1/login_user'
 
 app_id = 'MZFiLAzmJu'
 app_key = 'vUCiKf167oNUfpdbsxKs'
-username = 'test5'
+username = 'test4'
 password = 'test_password4'
 salt = str(random.randint(1, 100000))
 sign_str = app_id + app_key + username + password + salt

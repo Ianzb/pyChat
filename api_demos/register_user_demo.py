@@ -9,8 +9,8 @@ url = BASE_URL + '/api/v1/register_user'
 
 app_id = 'MZFiLAzmJu'
 app_key = 'vUCiKf167oNUfpdbsxKs'
-username = 'test4'
-password = 'test_password4'
+username = 't'
+password = 't'
 description= 'Test test test...'
 salt = str(random.randint(1, 100000))
 sign_str = app_id + app_key + username + password + description + salt

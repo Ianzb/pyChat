@@ -77,7 +77,7 @@ def login_user():
     return {
         'status': 0,
         'session': user_session.user_session,
-        'exp_time': user_session.exp_time
+        'exp_time': user_session.exp_time.timestamp()
     }
 
 
@@ -138,8 +138,8 @@ def get_user_info():
         'username': user.username,
         'role': user.role,
         'description': user.description,
-        'reg_time': user.reg_time,
-        'last_use_time': user.last_use_time
+        'reg_time': user.reg_time.timestamp(),
+        'last_use_time': user.last_use_time.timestamp()
     }
 
 
@@ -157,7 +157,7 @@ def heartbeat():
     return {
         'status': 0,
         'username': user.username,
-        'current_time': datetime.now()
+        'current_time': datetime.now().timestamp()
     }
 
 
@@ -181,7 +181,7 @@ def send_direct_message():
         'status': 0,
         'send_user': send_user.username,
         'recv_user': recv_user.username,
-        'send_time': datetime.now()
+        'send_time': datetime.now().timestamp()
     }
 
 
@@ -214,7 +214,7 @@ def register_group():
     return {
         'status': 0,
         'gid': group.id,
-        'register_time': datetime.now()
+        'register_time': datetime.now().timestamp()
     }
 
 
@@ -238,7 +238,7 @@ def send_group_message():
         'status': 0,
         'send_user': send_user.username,
         'group': group.name,
-        'send_time': datetime.now()
+        'send_time': datetime.now().timestamp()
     }
 
 
@@ -275,8 +275,8 @@ def get_group_info():
         'gid': group.id,
         'name': group.name,
         'description': group.description,
-        'reg_time': group.reg_time,
-        'last_use_time': group.last_use_time
+        'reg_time': group.reg_time.timestamp(),
+        'last_use_time': group.last_use_time.timestamp()
     }
 
 
