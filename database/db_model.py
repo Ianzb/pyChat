@@ -9,7 +9,7 @@ class Application(db.Model):
     app_id = db.Column(db.String(10), unique=True)
     app_key = db.Column(db.String(20))
     description = db.Column(db.String(50))
-    available = db.Column(db.Integer) # 1-available 0-unavailable
+    available = db.Column(db.Integer)  # 1-available 0-unavailable
     reg_time = db.Column(db.DateTime)
     last_use_time = db.Column(db.DateTime)
 
@@ -20,6 +20,7 @@ class User(db.Model):
     username = db.Column(db.String(20), unique=True)
     role = db.Column(db.Integer)  # 0-user, 1-admin, 2-super admin, 3-permanently banned
     password_hash = db.Column(db.String(64))  # hashed by sha256, salt: username
+    email = db.Column(db.String(128))
     description = db.Column(db.String(50))
     reg_time = db.Column(db.DateTime)
     last_use_time = db.Column(db.DateTime)
@@ -41,6 +42,16 @@ class Group(db.Model):
     reg_time = db.Column(db.DateTime)
     last_use_time = db.Column(db.DateTime)
 
+
+class GroupUser(db.Model):
+    __tablename__ = "group_user"
+    id = db.Column(db.Integer, primary_key=True)
+    gid = db.Column(db.ForeignKey('group.id'))
+    username = db.Column(db.ForeignKey('user.username'))
+    role = db.Column(db.Integer)  # 0: normal  1: admin  2: owner
+    mute_until = db.Column(db.DateTime)
+
+
 class Message(db.Model):
     __tablename__ = "message"
     id = db.Column(db.Integer, primary_key=True)
@@ -48,6 +59,7 @@ class Message(db.Model):
     recv_user = db.Column(db.ForeignKey('user.username'))
     message = db.Column(db.String(200))
     send_time = db.Column(db.DateTime)
+    delivered = db.Column(db.Boolean)
 
 
 class GroupMessage(db.Model):
